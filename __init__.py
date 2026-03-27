@@ -29,15 +29,17 @@ except ImportError:
     except:
         pass
 
+# Global for persistence fix
 _live_conf = None
 
 
 def get_config():
     global _live_conf
     if _live_conf: return _live_conf
+
     default = {
         "deck_maps": [],
-        "width": 600, "height": 300, "opacity": 90,
+        "width": 500, "height": 300, "opacity": 90,
         "pos_x": 50, "pos_y": 50,
         "color_word": "#ff79c6", "color_pitch": "#50fa7b", "color_sent": "#bd93f9",
         "key_again": "1", "key_hard": "2", "key_good": "3", "key_easy": "4",
@@ -53,7 +55,7 @@ def get_config():
     return conf
 
 
-# Record Hotkeys
+# --- HOTKEY RECORDER ---
 class HotkeyRecorder(QPushButton):
     def __init__(self, current_key, parent=None):
         super().__init__(current_key if current_key else "None", parent)
@@ -92,7 +94,7 @@ class HotkeyRecorder(QPushButton):
         self.setChecked(False)
 
 
-# overlay window
+# --- OVERLAY WINDOW ---
 class Overlay(QWidget):
     def __init__(self):
         super().__init__()
@@ -185,7 +187,7 @@ overlay = None
 current_listener = None
 
 
-# core
+# --- CORE LOGIC ---
 def update_overlay():
     if not overlay: return
     QTimer.singleShot(100, _force_refresh_data)
@@ -244,7 +246,7 @@ def start_global_listener():
         pass
 
 
-# Config Dialog
+# --- CONFIG DIALOG ---
 class ConfigDialog(QDialog):
     def __init__(self):
         super().__init__(mw);
@@ -372,8 +374,16 @@ class ConfigDialog(QDialog):
             "pos_x": self.conf.get("pos_x", 50), "pos_y": self.conf.get("pos_y", 50)
         }
         for k, w in self.hk_widgets.items(): final[k] = w.current_key
-        mw.addonManager.writeConfig(__name__, final)
+
+        # Hard Save Fix
         _live_conf = final
+        addon_dir = os.path.dirname(__file__)
+        config_path = os.path.join(addon_dir, "config.json")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(final, f, indent=4)
+
+        mw.addonManager.writeConfig(__name__, final)
+        tooltip("Saved Permanently!", period=1500)
         overlay.apply_prefs();
         start_global_listener();
         self.accept()
